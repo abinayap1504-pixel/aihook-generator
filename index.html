@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Hook Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f7f9;
+      margin: 0;
+      padding: 40px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    p.subtitle {
+      text-align: center;
+      color: #555;
+      margin-bottom: 40px;
+    }
+
+    .container {
+      display: flex;
+      gap: 30px;
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    .box {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      flex: 1;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    textarea, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #ff4b4b;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #e63e3e;
+    }
+
+    .hook {
+      background: #f1f3f5;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+
+    .label {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>🎣 AI Hook Generator</h1>
+  <p class="subtitle">
+    Turn technical product features into emotional, data-driven, and humorous hooks
+  </p>
+
+  <div class="container">
+
+    <!-- INPUT -->
+    <div class="box">
+      <h3>Input</h3>
+
+      <label>Technical Product Feature</label>
+      <textarea id="feature" rows="6"
+        placeholder="e.g. AI automatically categorizes customer support tickets and routes them in real time"></textarea>
+
+      <label>Brand Tone</label>
+      <select id="tone">
+        <option>Neutral</option>
+        <option>Bold</option>
+        <option>Playful</option>
+        <option>Premium</option>
+      </select>
+
+      <label>Channel</label>
+      <select id="channel">
+        <option>Instagram</option>
+        <option>Email</option>
+        <option>Landing Page</option>
+      </select>
+
+      <button onclick="generateHooks()">Generate Hooks</button>
+    </div>
+
+    <!-- OUTPUT -->
+    <div class="box">
+      <h3>Output</h3>
+
+      <div class="hook">
+        <div class="label">Emotional Hook</div>
+        <div id="emotional">—</div>
+      </div>
+
+      <div class="hook">
+        <div class="label">Data-Driven Hook</div>
+        <div id="data">—</div>
+      </div>
+
+      <div class="hook">
+        <div class="label">Humorous Hook</div>
+        <div id="humor">—</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function generateHooks() {
+      const feature = document.getElementById("feature").value;
+      const tone = document.getElementById("tone").value;
+      const channel = document.getElementById("channel").value;
+
+      if (!feature.trim()) {
+        alert("Please enter a product feature.");
+        return;
+      }
+
+      let emotional, data, humor;
+
+      // Tone logic
+      if (tone === "Bold") {
+        emotional = "No more compromises. " + feature + " delivers real confidence.";
+        data = "Top teams trust " + feature + " to move faster with fewer errors.";
+        humor = feature + ", minus the chaos.";
+      } 
+      else if (tone === "Playful") {
+        emotional = "Relax — " + feature + " has this covered.";
+        data = feature + " helps you get more done with less effort.";
+        humor = "Because " + feature + " shouldn’t feel like work.";
+      } 
+      else if (tone === "Premium") {
+        emotional = "Peace of mind comes standard with " + feature + ".";
+        data = feature + " delivers consistent performance for critical workflows.";
+        humor = "Quietly brilliant. Like " + feature + ".";
+      } 
+      else {
+        emotional = "Feel confident knowing " + feature + " works seamlessly.";
+        data = feature + " improves efficiency and reduces manual effort.";
+        humor = "Finally, " + feature + " that makes sense.";
+      }
+
+      // Channel logic
+      if (channel === "Instagram") {
+        emotional += " ✨";
+        humor += " 😄";
+      }
+
+      if (channel === "Email") {
+        emotional = "Good news: " + emotional;
+      }
+
+      if (channel === "Landing Page") {
+        data = "Why it matters: " + data;
+      }
+
+      document.getElementById("emotional").innerText = emotional;
+      document.getElementById("data").innerText = data;
+      document.getElementById("humor").innerText = humor;
+    }
+  </script>
+
+</body>
+</html>
