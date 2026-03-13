@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-    <title>Smart Budget Pro</title>
+    <title>Smart Budget</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -14,12 +14,12 @@
         .app-container { width: 100%; max-width: 400px; }
         .card { background: white; padding: 25px; border-radius: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
         input { width: 100%; box-sizing: border-box; padding: 15px; border: 2px solid #f1f5f9; border-radius: 12px; font-size: 16px; margin-bottom: 10px; }
-        button { width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        button { width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: 600; cursor: pointer; }
         .primary-btn { background: var(--primary); color: white; }
         .secondary-btn { background: #f1f5f9; color: var(--text); margin-top: 10px; }
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
         .stats-card { background: var(--primary); padding: 16px; border-radius: 20px; color: white; cursor: pointer; }
-        .category-selector { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding: 5px 0; scrollbar-width: none; }
+        .category-selector { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding: 5px 0; }
         .cat-chip { padding: 8px 16px; border-radius: 20px; background: #f1f5f9; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; }
         .cat-chip.active { background: var(--primary); color: white; }
     </style>
@@ -28,8 +28,9 @@
     <div class="app-container">
         <div id="auth-screen" class="card">
             <h2 id="auth-title">Welcome Back</h2>
-            <input type="email" id="email" placeholder="Email Address">
-            <input type="password" id="password" placeholder="Password">
+            <input type="text" id="userName" placeholder="Your Full Name" style="display:none;" autocomplete="off">
+            <input type="email" id="email" placeholder="Email Address" autocomplete="off">
+            <input type="password" id="password" placeholder="Password" autocomplete="off">
             <button onclick="handleAuth()" class="primary-btn" id="main-auth-btn">Login</button>
             <button onclick="toggleAuthMode()" class="secondary-btn" id="toggle-btn">New here? Sign Up</button>
             <p id="auth-error" style="color:var(--danger); font-size:12px; margin-top:10px; text-align:center;"></p>
@@ -37,75 +38,73 @@
 
         <div id="app-content" style="display:none;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h1 style="margin:0; font-size:20px;">My Budget</h1>
+                <h1 style="margin:0; font-size:20px;" id="greeting">Hi!</h1>
                 <button onclick="logout()" style="width:auto; padding:5px 10px; background:#fee2e2; color:#ef4444; font-size:10px;">Logout</button>
             </div>
-            
             <div class="stats-grid">
                 <div class="stats-card" onclick="showMainChart('weekly')"><div>Weekly</div><div id="weekly-total" style="font-size:18px; font-weight:700;">₹0</div></div>
                 <div class="stats-card" onclick="showMainChart('monthly')" style="background:var(--text)"><div>Monthly</div><div id="monthly-total" style="font-size:18px; font-weight:700;">₹0</div></div>
             </div>
-
-            <div id="chart-holder" class="card" style="display:none;">
-                <canvas id="myChart"></canvas>
-            </div>
-
+            <div id="chart-holder" class="card" style="display:none;"><canvas id="myChart"></canvas></div>
             <div class="card">
                 <div class="category-selector">
                     <div class="cat-chip active" id="chip-Food" onclick="selectCat('Food')">🍔 Food</div>
                     <div class="cat-chip" id="chip-Shopping" onclick="selectCat('Shopping')">🛍️ Shopping</div>
                     <div class="cat-chip" id="chip-Utility" onclick="selectCat('Utility')">⚡ Utility</div>
                 </div>
-                <input type="text" id="manualInput" placeholder="e.g. 200 lunch">
+                <input type="text" id="manualInput" placeholder="e.g. 200 coffee" autocomplete="off">
                 <div style="display:grid; grid-template-columns: 3fr 1fr; gap:10px;">
                     <button class="primary-btn" onclick="manualSave()">Save</button>
                     <button class="secondary-btn" onclick="startVoice()">🎤</button>
                 </div>
-                <p id="status" style="text-align:center; font-size:12px; color:#64748b; margin-top:15px;">Ready</p>
+                <button onclick="undoLast()" style="background:none; color:var(--danger); font-size:11px; margin-top:10px;">Undo last entry</button>
+                <p id="status" style="text-align:center; font-size:12px; color:#64748b; margin-top:10px;">Ready</p>
             </div>
         </div>
     </div>
 
     <script>
-        // --- CONFIGURATION ---
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIeDiQXH_yX3wzQUaQWtHECIREOx03ySOj7pfuKoaQY_wKYqIbUjp8CKrnHPZfsEiQ/exec";
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
         const firebaseConfig = {
-        apiKey: "AIzaSyDv68lBZMhYlTLSvOahoPMWWDkUvDgNX-s",
-        authDomain: "smart-budget-9f655.firebaseapp.com",
-        projectId: "smart-budget-9f655",
-        storageBucket: "smart-budget-9f655.firebasestorage.app",
-        messagingSenderId: "594557619997",
-        appId: "1:594557619997:web:d4396b0afbe558425a9bf4",
-        measurementId: "G-DYF2P4MZF7"
-        };
+          apiKey: "AIzaSyDv68lBZMhYlTLSvOahoPMWWDkUvDgNX-s",
+          authDomain: "smart-budget-9f655.firebaseapp.com",
+          projectId: "smart-budget-9f655",
+          storageBucket: "smart-budget-9f655.firebasestorage.app",
+          messagingSenderId: "594557619997",
+          appId: "1:594557619997:web:d4396b0afbe558425a9bf4",
+          measurementId: "G-DYF2P4MZF7"
+            };
 
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         let isLoginMode = true;
         let currentUser = null;
 
-        // --- AUTH LOGIC ---
         function toggleAuthMode() {
             isLoginMode = !isLoginMode;
             document.getElementById('auth-title').innerText = isLoginMode ? "Welcome Back" : "Create Account";
             document.getElementById('main-auth-btn').innerText = isLoginMode ? "Login" : "Sign Up";
             document.getElementById('toggle-btn').innerText = isLoginMode ? "New here? Sign Up" : "Have an account? Login";
+            document.getElementById('userName').style.display = isLoginMode ? "none" : "block";
         }
 
         function handleAuth() {
             const email = document.getElementById('email').value;
             const pass = document.getElementById('password').value;
-            const btn = document.getElementById('main-auth-btn');
-            btn.innerText = "Processing...";
-
-            const action = isLoginMode 
-                ? auth.signInWithEmailAndPassword(email, pass)
-                : auth.createUserWithEmailAndPassword(email, pass);
-
-            action.catch(err => {
-                document.getElementById('auth-error').innerText = err.message;
-                btn.innerText = isLoginMode ? "Login" : "Sign Up";
-            });
+            const errorDisplay = document.getElementById('auth-error');
+            errorDisplay.innerText = "";
+            
+            if (isLoginMode) {
+                auth.signInWithEmailAndPassword(email, pass).catch(() => {
+                    errorDisplay.innerText = "Username or Password entered is incorrect.";
+                });
+            } else {
+                const name = document.getElementById('userName').value;
+                auth.createUserWithEmailAndPassword(email, pass).then(res => {
+                    return res.user.updateProfile({ displayName: name });
+                }).catch(err => errorDisplay.innerText = err.message);
+            }
         }
 
         auth.onAuthStateChanged(user => {
@@ -113,6 +112,7 @@
                 currentUser = user;
                 document.getElementById('auth-screen').style.display = 'none';
                 document.getElementById('app-content').style.display = 'block';
+                document.getElementById('greeting').innerText = "Hi " + (user.displayName || "User") + "!";
                 refreshStats();
             } else {
                 document.getElementById('auth-screen').style.display = 'block';
@@ -122,23 +122,19 @@
 
         function logout() { auth.signOut(); }
 
-        // --- BUDGET LOGIC ---
         let myChart; let selectedCategory = "Food"; let globalStats = null;
-
-        function refreshStats() {
-            fetch(`${SCRIPT_URL}?userId=${currentUser.uid}`)
-                .then(res => res.json())
-                .then(stats => {
-                    globalStats = stats;
-                    document.getElementById('weekly-total').innerText = `₹${stats.weekly}`;
-                    document.getElementById('monthly-total').innerText = `₹${stats.monthly}`;
-                });
-        }
-
         function selectCat(cat) {
             selectedCategory = cat;
             document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
             document.getElementById('chip-' + cat).classList.add('active');
+        }
+
+        function refreshStats() {
+            fetch(`${SCRIPT_URL}?userId=${currentUser.uid}`).then(res => res.json()).then(stats => {
+                globalStats = stats;
+                document.getElementById('weekly-total').innerText = `₹${stats.weekly}`;
+                document.getElementById('monthly-total').innerText = `₹${stats.monthly}`;
+            });
         }
 
         function manualSave() {
@@ -148,7 +144,7 @@
             document.getElementById('status').innerText = "Saving...";
             fetch(SCRIPT_URL, {
                 method: "POST",
-                body: JSON.stringify({ amount: amt[0], description: input.value.replace(amt[0], "").trim(), category: selectedCategory, userId: currentUser.uid })
+                body: JSON.stringify({ amount: amt[0], description: input.value.replace(amt[0], "").trim(), category: selectedCategory, userId: currentUser.uid, userName: currentUser.displayName })
             }).then(() => { input.value = ""; refreshStats(); document.getElementById('status').innerText = "Saved!"; });
         }
 
@@ -161,6 +157,11 @@
                 type: 'pie',
                 data: { labels: Object.keys(data), datasets: [{ data: Object.values(data), backgroundColor: ['#6366f1', '#1e293b', '#f59e0b'] }] }
             });
+        }
+
+        function undoLast() {
+            fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "undo", userId: currentUser.uid }) })
+            .then(() => { refreshStats(); document.getElementById('status').innerText = "Undone!"; });
         }
 
         function startVoice() {
