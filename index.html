@@ -3,73 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-    <title>Smart Budget</title>
+    <title>Smart Budget Pro</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root { --primary: #6366f1; --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --danger: #ef4444; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
         .app-container { width: 100%; max-width: 400px; }
+        .card { background: white; padding: 25px; border-radius: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        input { width: 100%; box-sizing: border-box; padding: 15px; border: 2px solid #f1f5f9; border-radius: 12px; font-size: 16px; margin-bottom: 10px; }
+        button { width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .primary-btn { background: var(--primary); color: white; }
+        .secondary-btn { background: #f1f5f9; color: var(--text); margin-top: 10px; }
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
         .stats-card { background: var(--primary); padding: 16px; border-radius: 20px; color: white; cursor: pointer; }
-        .monthly { background: var(--text); }
-        .stats-value { font-size: 18px; font-weight: 700; margin-top: 4px; }
-        .input-card, #chart-container { background: white; padding: 20px; border-radius: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .category-selector { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding: 5px 0; }
-        .cat-chip { padding: 8px 16px; border-radius: 20px; background: #f1f5f9; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+        .category-selector { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding: 5px 0; scrollbar-width: none; }
+        .cat-chip { padding: 8px 16px; border-radius: 20px; background: #f1f5f9; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; }
         .cat-chip.active { background: var(--primary); color: white; }
-        input { width: 100%; box-sizing: border-box; padding: 16px; border: 2px solid #f1f5f9; border-radius: 14px; font-size: 16px; margin-bottom: 12px; }
-        .btn-row { display: grid; grid-template-columns: 3fr 1fr; gap: 10px; }
-        .save-btn { background: var(--primary); color: white; border: none; padding: 16px; border-radius: 14px; font-weight: 600; cursor: pointer; }
-        .voice-btn { background: #f1f5f9; border: none; border-radius: 14px; cursor: pointer; font-size: 20px; }
-        .undo-btn { background: none; border: none; color: var(--danger); font-size: 12px; width: 100%; margin-top: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
     <div class="app-container">
-        <header><h1 id="user-greeting">Hi!</h1><p id="date-display" style="font-size:12px; color:#64748b"></p></header>
-        <div class="stats-grid">
-            <div class="stats-card" onclick="showMainChart('weekly')"><div>Weekly</div><div class="stats-value" id="weekly-total">₹0</div></div>
-            <div class="stats-card monthly" onclick="showMainChart('monthly')"><div>Monthly</div><div class="stats-value" id="monthly-total">₹0</div></div>
+        <div id="auth-screen" class="card">
+            <h2 id="auth-title">Welcome Back</h2>
+            <input type="email" id="email" placeholder="Email Address">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="handleAuth()" class="primary-btn" id="main-auth-btn">Login</button>
+            <button onclick="toggleAuthMode()" class="secondary-btn" id="toggle-btn">New here? Sign Up</button>
+            <p id="auth-error" style="color:var(--danger); font-size:12px; margin-top:10px; text-align:center;"></p>
         </div>
-        <div id="chart-container" style="display:none;">
-            <button onclick="goBackMain()" style="background:none; border:none; color:var(--primary); cursor:pointer; margin-bottom:10px;">← Back</button>
-            <canvas id="myChart"></canvas>
-        </div>
-        <div class="input-card">
-            <div class="category-selector">
-                <div class="cat-chip active" id="chip-Food" onclick="selectCat('Food')">🍔 Food</div>
-                <div class="cat-chip" id="chip-Shopping" onclick="selectCat('Shopping')">🛍️ Shopping</div>
-                <div class="cat-chip" id="chip-Utility" onclick="selectCat('Utility')">⚡ Utility</div>
-                <div class="cat-chip" id="chip-Groceries" onclick="selectCat('Groceries')">🛒 Groceries</div>
+
+        <div id="app-content" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h1 style="margin:0; font-size:20px;">My Budget</h1>
+                <button onclick="logout()" style="width:auto; padding:5px 10px; background:#fee2e2; color:#ef4444; font-size:10px;">Logout</button>
             </div>
-            <input type="text" id="manualInput" placeholder="e.g. 100 coffee">
-            <div class="btn-row">
-                <button class="save-btn" onclick="manualSave()">Enter Expense</button>
-                <button class="voice-btn" onclick="startVoice()">🎤</button>
+            
+            <div class="stats-grid">
+                <div class="stats-card" onclick="showMainChart('weekly')"><div>Weekly</div><div id="weekly-total" style="font-size:18px; font-weight:700;">₹0</div></div>
+                <div class="stats-card" onclick="showMainChart('monthly')" style="background:var(--text)"><div>Monthly</div><div id="monthly-total" style="font-size:18px; font-weight:700;">₹0</div></div>
             </div>
-            <button class="undo-btn" onclick="undoLast()">Undo last entry</button>
-            <p id="status" style="text-align:center; font-size:12px; color:#64748b; margin-top:15px;">Ready</p>
+
+            <div id="chart-holder" class="card" style="display:none;">
+                <canvas id="myChart"></canvas>
+            </div>
+
+            <div class="card">
+                <div class="category-selector">
+                    <div class="cat-chip active" id="chip-Food" onclick="selectCat('Food')">🍔 Food</div>
+                    <div class="cat-chip" id="chip-Shopping" onclick="selectCat('Shopping')">🛍️ Shopping</div>
+                    <div class="cat-chip" id="chip-Utility" onclick="selectCat('Utility')">⚡ Utility</div>
+                </div>
+                <input type="text" id="manualInput" placeholder="e.g. 200 lunch">
+                <div style="display:grid; grid-template-columns: 3fr 1fr; gap:10px;">
+                    <button class="primary-btn" onclick="manualSave()">Save</button>
+                    <button class="secondary-btn" onclick="startVoice()">🎤</button>
+                </div>
+                <p id="status" style="text-align:center; font-size:12px; color:#64748b; margin-top:15px;">Ready</p>
+            </div>
         </div>
     </div>
+
     <script>
-        const SCRIPT_URL = "REPLACE_WITH_YOUR_NEW_GOOGLE_DEPLOY_URL";
-        const urlParams = new URLSearchParams(window.location.search);
-        const userId = urlParams.get('user') || "Guest";
+        // --- CONFIGURATION ---
+        const SCRIPT_URL = "YOUR_GOOGLE_SCRIPT_URL";
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
 
-        document.getElementById('user-greeting').innerText = "Hi " + userId + "!";
-        document.getElementById('date-display').innerText = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        let isLoginMode = true;
+        let currentUser = null;
 
-        let myChart; let selectedCategory = "Food"; let globalStats = null; let currentTimeFrame = 'weekly';
+        // --- AUTH LOGIC ---
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            document.getElementById('auth-title').innerText = isLoginMode ? "Welcome Back" : "Create Account";
+            document.getElementById('main-auth-btn').innerText = isLoginMode ? "Login" : "Sign Up";
+            document.getElementById('toggle-btn').innerText = isLoginMode ? "New here? Sign Up" : "Have an account? Login";
+        }
 
-        window.onload = refreshStats;
+        function handleAuth() {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            const btn = document.getElementById('main-auth-btn');
+            btn.innerText = "Processing...";
+
+            const action = isLoginMode 
+                ? auth.signInWithEmailAndPassword(email, pass)
+                : auth.createUserWithEmailAndPassword(email, pass);
+
+            action.catch(err => {
+                document.getElementById('auth-error').innerText = err.message;
+                btn.innerText = isLoginMode ? "Login" : "Sign Up";
+            });
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('auth-screen').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
+                refreshStats();
+            } else {
+                document.getElementById('auth-screen').style.display = 'block';
+                document.getElementById('app-content').style.display = 'none';
+            }
+        });
+
+        function logout() { auth.signOut(); }
+
+        // --- BUDGET LOGIC ---
+        let myChart; let selectedCategory = "Food"; let globalStats = null;
 
         function refreshStats() {
-            fetch(`${SCRIPT_URL}?userId=${userId}`).then(res => res.json()).then(stats => {
-                globalStats = stats;
-                document.getElementById('weekly-total').innerText = `₹${stats.weekly}`;
-                document.getElementById('monthly-total').innerText = `₹${stats.monthly}`;
-            });
+            fetch(`${SCRIPT_URL}?userId=${currentUser.uid}`)
+                .then(res => res.json())
+                .then(stats => {
+                    globalStats = stats;
+                    document.getElementById('weekly-total').innerText = `₹${stats.weekly}`;
+                    document.getElementById('monthly-total').innerText = `₹${stats.monthly}`;
+                });
         }
 
         function selectCat(cat) {
@@ -85,44 +147,26 @@
             document.getElementById('status').innerText = "Saving...";
             fetch(SCRIPT_URL, {
                 method: "POST",
-                body: JSON.stringify({ amount: amt[0], description: input.value.replace(amt[0], "").trim(), category: selectedCategory, userId: userId })
+                body: JSON.stringify({ amount: amt[0], description: input.value.replace(amt[0], "").trim(), category: selectedCategory, userId: currentUser.uid })
             }).then(() => { input.value = ""; refreshStats(); document.getElementById('status').innerText = "Saved!"; });
         }
 
         function showMainChart(timeframe) {
-            currentTimeFrame = timeframe;
-            document.getElementById('chart-container').style.display = "block";
+            document.getElementById('chart-holder').style.display = "block";
             const data = timeframe === 'weekly' ? globalStats.weeklyChart : globalStats.monthlyChart;
-            renderChart(Object.keys(data), Object.values(data), true);
-        }
-
-        function renderChart(labels, values, isDrillable) {
             const ctx = document.getElementById('myChart').getContext('2d');
             if (myChart) myChart.destroy();
             myChart = new Chart(ctx, {
                 type: 'pie',
-                data: { labels, datasets: [{ data: values, backgroundColor: ['#6366f1', '#1e293b', '#f59e0b', '#10b981'] }] },
-                options: { onClick: (e, item) => { if(isDrillable && item.length > 0) showDrillDown(labels[item[0].index]); } }
+                data: { labels: Object.keys(data), datasets: [{ data: Object.values(data), backgroundColor: ['#6366f1', '#1e293b', '#f59e0b'] }] }
             });
         }
-
-        function showDrillDown(cat) {
-            const drillData = currentTimeFrame === 'weekly' ? globalStats.wDrill[cat] : globalStats.mDrill[cat];
-            renderChart(Object.keys(drillData), Object.values(drillData), false);
-        }
-
-        function goBackMain() { showMainChart(currentTimeFrame); }
 
         function startVoice() {
             const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
             recognition.lang = 'en-IN';
             recognition.onresult = (e) => { document.getElementById('manualInput').value = e.results[0][0].transcript; };
             recognition.start();
-        }
-
-        function undoLast() {
-            fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "undo", userId: userId }) })
-            .then(() => { refreshStats(); document.getElementById('status').innerText = "Undone!"; });
         }
     </script>
 </body>
